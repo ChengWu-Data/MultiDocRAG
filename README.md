@@ -1,186 +1,135 @@
-# 🧠 **MultiDocRAG**
+# **MultiDocRAG**
 
-### *A Retrieval-Augmented Multi-Document Reasoning Assistant*
+### *A Retrieval-Augmented Multi-Document Question Answering System*
 
-MultiDocRAG is an LLM-powered system designed for **cross-document reasoning**.
-It enables users to upload multiple PDFs—papers, reports, articles—and ask grounded questions that require **comparison, synthesis, and multi-document understanding**.
+MultiDocRAG is a lightweight Retrieval-Augmented Generation (RAG) pipeline for **multi-document question answering**.
+It supports PDF ingestion, semantic chunking, FAISS-based retrieval, and safe LLM reasoning—all implemented through clean and reproducible notebooks.
 
-The system integrates:
-
-* **Multi-document ingestion & chunking**
-* **Vector-based retrieval with embeddings**
-* **LLM reasoning over retrieved evidence**
-* **Optional conversational memory** for context continuity
-* **A full evaluation pipeline** comparing baseline LLM vs RAG-enhanced performance
-
-This project was developed as part of **COMS 4995 – Applied Machine Learning** at Columbia.
+This project was developed as part of **COMS 4995 — Applied Machine Learning** at Columbia University.
 
 ---
 
-## 🚀 **Key Features**
+# Features
 
-### **📄 Multi-Document Ingestion**
+### **1. PDF Ingestion & Chunking**
 
-Upload several PDFs at once.
-The system automatically extracts text, segments it into semantic chunks, and stores them in a vector database.
+Notebook **`01_ingestion_retrieval.ipynb`** extracts text from multiple PDFs, splits them into overlapping chunks, and saves them into a searchable index.
 
-### **🔍 Retrieval-Augmented Generation (RAG)**
+### **2. Vector Retrieval with FAISS**
 
-Queries are grounded in the uploaded documents through top-k similarity search.
-Responses include **citations** to the most relevant chunks.
-
-### **🧩 Cross-Document Reasoning**
-
-Designed to answer questions like:
-
-* *“Compare method A in Paper 1 and method B in Paper 2.”*
-* *“Summarize common limitations across these documents.”*
-* *“What does Paper 3 say about X, and how does it differ from Paper 1?”*
-
-### **🧠 Optional Memory Module**
-
-Keeps track of previous interactions and user preferences to improve coherence in multi-turn conversations.
-
-### **📊 Evaluation Framework**
-
-We rigorously compare:
-
-* **Baseline LLM** (no RAG, single-pass prompting)
-* **RAG-based system**
-* **RAG + Memory system**
-
-Using metrics such as:
-
-* Relevance
-* Faithfulness
-* Ability to cite correct documents
-* Multi-document synthesis quality
-
-### **💻 Clean Demo Interface**
-
-A simple UI / notebook demo allows:
-
-1. PDF upload
-2. Query input
-3. Retrieval visualization
-4. Final synthesized answer with citations
-
----
-
-## 🏗️ **System Architecture**
+A custom retriever (`src/retriever.py`) performs embedding computation and FAISS indexing.
+The resulting vector database lives in:
 
 ```
-                ┌────────────────────────┐
-                │        PDFs (n)        │
-                └────────────┬───────────┘
-                             ▼
-                 ┌───────────────────────┐
-                 │  Document Ingestion   │
-                 │ (extraction + chunks) │
-                 └────────────┬──────────┘
-                             ▼
-                 ┌───────────────────────┐
-                 │     Embeddings        │
-                 │   (vector database)   │
-                 └────────────┬──────────┘
-                             ▼
-                 ┌───────────────────────┐
-                 │      Retrieval        │
-                 └────────────┬──────────┘
-                             ▼
-                 ┌───────────────────────┐
-                 │  LLM Reasoning Layer  │
-                 │ (RAG + Memory + CoT)  │
-                 └────────────┬──────────┘
-                             ▼
-                 ┌───────────────────────┐
-                 │     Final Answer      │
-                 │     + Citations       │
-                 └───────────────────────┘
+index_store/
+├── chunks.json
+├── embeddings.npy
+├── faiss.index
+└── meta.json
 ```
+
+### **3. Retrieval-Augmented Generation (RAG)**
+
+Notebook **`02_llm_rag.ipynb`** loads:
+
+* the retriever
+* an open-source causal LLM
+* a safe, context-aware generation wrapper
+* a unified QA interface (`answer_question`)
+
+Users can compare:
+
+* **Baseline LLM responses** (no context)
+* **RAG-enhanced responses** (grounded in retrieved evidence)
+
+### **4. Safe, Scalable LLM Usage**
+
+The custom `generate_from_model()`:
+
+* automatically avoids context-length overflow
+* supports nucleus sampling (`top_p`) and temperature
+* works with small or large models
+* runs entirely offline (no API keys required)
 
 ---
 
-## 📦 **Repository Structure**
+# Repository Structure
 
 ```
 MultiDocRAG/
 │
+├── index_store/                     # Vector DB built from PDFs
+│   ├── chunks.json
+│   ├── embeddings.npy
+│   ├── faiss.index
+│   └── meta.json
+│
+├── notebooks/
+│   ├── 01_ingestion_retrieval.ipynb # Build index from documents
+│   └── 02_llm_rag.ipynb             # RAG pipeline + QA comparison
+│
 ├── src/
-│   ├── ingestion/         # PDF loading, extraction, chunking
-│   ├── embeddings/        # Embedding model wrappers
-│   ├── retrieval/         # Vector search & reranker
-│   ├── llm/               # Prompting, reasoning, memory, CoT
-│   ├── evaluation/        # Baseline vs RAG comparisons
-│   ├── demo/              # Notebook / Streamlit app
-│   └── utils/             # Helper functions
+│   ├── __init__.py
+│   └── retriever.py                 # MultiDocRetriever implementation
 │
-├── data/                  # Sample PDFs (if allowed)
-│
-├── experiments/           # Results, tables, qualitative examples
-│
-├── README.md
-├── requirements.txt
-├── LICENSE (MIT)
-└── .gitignore
+├── LICENSE
+├── .gitignore
+└── README.md
 ```
 
 ---
 
-## 🧪 **Evaluation Overview**
+# How to Use
 
-We evaluate on tasks including:
+### **1. Install Dependencies**
 
-* **Cross-document QA**
-* **Comparative analysis**
-* **Evidence attribution**
-* **Long-context question consistency**
+```
+pip install transformers sentence-transformers faiss-cpu pypdf
+```
 
-Example evaluation question:
+### **2. Build Retrieval Index (Notebook 01)**
 
-> *“How does the methodology in Paper A differ from Paper B in terms of data assumptions and model constraints?”*
+* Upload PDFs
+* Extract + chunk the text
+* Generate embeddings
+* Save index to `index_store/`
 
-The system generates:
+### **3. Run RAG QA (Notebook 02)**
 
-* Answer with synthesized explanation
-* Citations for each referenced document
-* Evidence snippets retrieved
+* Load the retriever
+* Load an open-source LLM
+* Ask multi-document questions
+* Compare baseline vs RAG answers
 
 ---
 
-## ▶️ **Demo Instructions**
+# Example Query
 
-### **1. Install dependencies**
+> **“What are the main sources of interest rate risk discussed across these papers?”**
 
-```
-pip install -r requirements.txt
-```
+The system:
 
-### **2. Run the demo app**
-
-```
-streamlit run app.py
-```
-
-### **3. Upload PDFs and start asking questions**
+1. Retrieves top-k relevant chunks
+2. Builds a contextual RAG prompt
+3. Generates an answer grounded in retrieved evidence
 
 ---
 
-## 🤝 **Steps**
+# Future Extensions
 
-* **Document ingestion & retrieval**
-* **LLM logic (RAG + reasoning + memory)**
-* **System integration & demo**
-* **Evaluation + report (baseline vs RAG/memory, experiments, tables, write-up)**
+The repo is structured to expand to:
 
----
-
-## 📜 **License**
-
-MIT License
+* Larger LLMs (LLaMA 3, Mistral, Gemma, TinyLlama, Phi-3, etc.)
+* Stronger embedding models (BGE, E5, GTE)
+* Multi-turn conversational memory
+* Citation-aware answering
+* Streamlit UI for real-time PDF QA
 
 ---
 
-# 🎉 **MultiDocRAG: Turning Multiple PDFs Into One Coherent Answer**
+# License
 
+MIT License.
+
+---
 
