@@ -183,9 +183,29 @@ def generate_from_model(
     return text.strip()
 
 
-def build_rag_prompt(question: str, context: str) -> str:
+# ==========================
+# Prompt builders with conversation memory
+# ==========================
+
+def format_history(history, max_turns: int = 3) -> str:
+    """Format recent conversation history for injection into the prompt."""
+    if not history:
+        return "No previous conversation.\n"
+    # last `max_turns` user–assistant exchanges => 2 * max_turns entries
+    recent = history[-2 * max_turns :]
+    lines = []
+    for role, text in recent:
+        lines.append(f"{role}: {text}")
+    return "\n".join(lines) + "\n"
+
+
+def build_rag_prompt(question: str, context: str, history) -> str:
+    history_text = format_history(history)
     return f"""You are a teaching assistant for a graduate-level financial economics class.
-Use ONLY the provided context to answer the question.
+
+Here is the recent conversation with the user:
+{history_text}
+Use ONLY the provided context from the documents to answer the new question.
 If the context is insufficient, say:
 "The context does not provide enough information to answer fully."
 
@@ -197,6 +217,18 @@ Question:
 
 Provide a concise answer in 1–2 short paragraphs.
 """
+
+
+def build_baseline_prompt(question: str, history) -> str:
+    history_text = format_history(history)
+    return (
+        "You are a general-purpose assistant.\n"
+        "Here is the recent conversation with the user:\n"
+        f"{history_text}\n"
+        "Answer the new question below as best as you can.\n"
+        "Do not assume you have access to any specific research papers.\n\n"
+        f"Question:\n{question}\n"
+    )
 
 
 # ==========================
@@ -324,11 +356,12 @@ st.caption(
     "Baseline mode ignores them and lets the model answer from its own knowledge."
 )
 
-# 初始化问题文本的 session_state
 if "question_text" not in st.session_state:
     st.session_state["question_text"] = ""
 
-# 文本输入框绑定到 question_text
+if "history" not in st.session_state:
+    st.session_state["history"] = []
+
 question = st.text_area(
     "Enter your question",
     height=120,
@@ -349,8 +382,14 @@ with col_right:
     )
     st.button("Load example", on_click=load_example_callback, use_container_width=True)
 
+with st.expander("Conversation history in this session"):
+    if st.session_state["history"]:
+        for role, text in st.session_state["history"]:
+            st.markdown(f"**{role}:** {text}")
+    else:
+        st.caption("No conversation history yet. Ask a question to start the dialogue.")
+
 if run_clicked:
-    # 每次 Run 时，从 session_state 里拿当前问题文本
     question = st.session_state.get("question_text", "")
 
     if retriever is None or model is None:
@@ -358,6 +397,11 @@ if run_clicked:
     elif not question.strip():
         st.warning("Please enter a question.")
     else:
+        
+        st.session_state["history"].append(("user", question))
+
+        history = st.session_state["history"]
+
         if mode == "RAG":
             chunks = retriever.retrieve(question, k=k)
             context_blocks = []
@@ -365,16 +409,11 @@ if run_clicked:
                 header = f"[{c['doc_id']} — chunk {c['chunk_id']}]"
                 context_blocks.append(header + "\n" + c["text"])
             context = "\n\n".join(context_blocks)
-            prompt = build_rag_prompt(question, context)
+            prompt = build_rag_prompt(question, context, history)
         else:
             chunks = []
             context = None
-            prompt = (
-                "You are a general-purpose assistant.\n"
-                "Answer the question below as best as you can.\n"
-                "Do not assume you have access to any specific research papers.\n\n"
-                f"Question:\n{question}\n"
-            )
+            prompt = build_baseline_prompt(question, history)
 
         with st.spinner("Generating answer..."):
             answer = generate_from_model(
@@ -385,6 +424,9 @@ if run_clicked:
                 temperature=temperature,
                 top_p=top_p,
             )
+
+        
+        st.session_state["history"].append(("assistant", answer))
 
         col_ans, col_ctx = st.columns([2, 1])
 
@@ -406,3 +448,13 @@ if run_clicked:
                             st.caption(f"Score: {score:.4f}")
             elif mode == "Baseline":
                 st.info("Baseline mode: no retrieved context is used.")
+
+
+
+
+
+
+
+
+
+                
