@@ -6,13 +6,11 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from src.retriever import MultiDocRetriever
 
 
-# Paths and retriever setup
-
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 INDEX_DIR = os.path.join(PROJECT_ROOT, "index_store")
 
-st.set_page_config(page_title="MultiDocRAG Demo", layout="wide")
 
+st.set_page_config(page_title="MultiDocRAG Demo", layout="wide")
 st.title("MultiDocRAG: Multi-Document RAG Demo")
 
 st.markdown(
@@ -29,7 +27,6 @@ It uses:
 with st.sidebar:
     st.header("Settings")
 
-    # You can switch to a larger model if your hardware allows it.
     default_model_name = "sshleifer/tiny-gpt2"
     model_name = st.text_input("Model name", value=default_model_name)
 
@@ -57,7 +54,7 @@ def load_retriever_and_index(index_dir: str) -> MultiDocRetriever:
 
 
 @st.cache_resource(show_spinner=True)
-def load_model_and_tokenizer(model_name: str):
+def load_model_and_tokenizer_cached(model_name: str):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
@@ -109,7 +106,6 @@ def generate_from_model(
     input_ids = enc["input_ids"]
     input_len = input_ids.shape[1]
 
-    # If prompt is too long, keep only the last (max_ctx - 1) tokens
     if input_len >= max_ctx:
         keep_len = max_ctx - 1
         if keep_len <= 0:
@@ -129,7 +125,7 @@ def generate_from_model(
     outputs = model.generate(
         input_ids=input_ids,
         max_new_tokens=max_new_tokens,
-        do_sample=True if temperature > 0 or top_p < 1.0 else False,
+        do_sample=True if (temperature > 0 or top_p < 1.0) else False,
         temperature=max(1e-5, float(temperature)),
         top_p=float(top_p),
         pad_token_id=tokenizer.pad_token_id,
@@ -155,15 +151,12 @@ Provide a concise answer in 1–2 short paragraphs.
 """
 
 
-# Load retriever and model
 retriever = load_retriever_and_index(INDEX_DIR)
-tokenizer, model = load_model_and_tokenizer(model_name)
+tokenizer, model = load_model_and_tokenizer_cached(model_name)
 
 st.success("Retriever and model loaded successfully.")
 
-# Main interaction
-
-question = st.text_area("Enter your question", height=100)
+question = st.text_area("Enter your question", height=120)
 
 if st.button("Run"):
     if not question.strip():
