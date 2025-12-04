@@ -1,0 +1,7 @@
+transformers==4.37.2
+sentence-transformers==2.2.2
+faiss-cpu==1.7.4
+pypdf==4.1.0
+numpy>=1.23.0
+torch>=2.0.0
+tqdm
