@@ -1,5 +1,4 @@
 import os
-import shutil
 import torch
 import streamlit as st
 from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -9,25 +8,24 @@ from src.retriever import MultiDocRetriever
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 INDEX_DIR = os.path.join(PROJECT_ROOT, "index_store")
-UPLOAD_DIR = os.path.join(PROJECT_ROOT, "uploaded_pdfs")
 
 
 st.set_page_config(page_title="MultiDocRAG Demo", layout="wide")
-st.title("MultiDocRAG: Demo with PDF Upload")
+st.title("MultiDocRAG: Multi-Document RAG Demo")
 
 st.markdown(
     """
-This is a demo for the MultiDocRAG pipeline.
+This app demonstrates the MultiDocRAG pipeline:
 
-It uses:
-- a FAISS index in `index_store/`
-- a local open-source language model
-- retrieval-augmented prompting to answer questions grounded in the documents
+- uses a pre-built FAISS index in `index_store/`
+- loads a local open-source language model
+- answers questions either with or without retrieved context (Baseline vs RAG)
 """
 )
 
+# ==========================
 # Sidebar settings
-
+# ==========================
 
 with st.sidebar:
     st.header("Settings")
@@ -47,8 +45,9 @@ with st.sidebar:
     )
 
 
-
+# ==========================
 # Cached loaders
+# ==========================
 
 @st.cache_resource(show_spinner=True)
 def load_retriever_and_index(index_dir: str) -> MultiDocRetriever:
@@ -159,69 +158,6 @@ Provide a concise answer in 1–2 short paragraphs.
 """
 
 
-
-# PDF upload + index rebuild
-
-st.subheader("1. Upload PDFs and rebuild index")
-
-uploaded_files = st.file_uploader(
-    "Upload one or more PDF files to rebuild the index.",
-    type=["pdf"],
-    accept_multiple_files=True,
-)
-
-col_build, col_status = st.columns([1, 2])
-
-with col_build:
-    rebuild_clicked = st.button("Build / Rebuild index from uploaded PDFs")
-
-with col_status:
-    index_exists = (
-        os.path.exists(os.path.join(INDEX_DIR, "embeddings.npy"))
-        and os.path.exists(os.path.join(INDEX_DIR, "faiss.index"))
-        and os.path.exists(os.path.join(INDEX_DIR, "chunks.json"))
-        and os.path.exists(os.path.join(INDEX_DIR, "meta.json"))
-    )
-    if index_exists:
-        st.success("Existing index detected in `index_store/`.")
-    else:
-        st.warning("No existing index found in `index_store/`. Please upload PDFs and build an index.")
-
-if rebuild_clicked:
-    if not uploaded_files:
-        st.warning("Please upload at least one PDF before rebuilding the index.")
-    else:
-        with st.spinner("Building index from uploaded PDFs..."):
-            # Clear previous uploads and recreate directory
-            if os.path.isdir(UPLOAD_DIR):
-                shutil.rmtree(UPLOAD_DIR)
-            os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-            # Save uploaded PDFs
-            pdf_paths = []
-            for f in uploaded_files:
-                out_path = os.path.join(UPLOAD_DIR, f.name)
-                with open(out_path, "wb") as out_f:
-                    out_f.write(f.read())
-                pdf_paths.append(out_path)
-
-            # Build a new retriever and index
-            new_retriever = MultiDocRetriever(
-                model_name="all-MiniLM-L6-v2",
-                max_chars=800,
-                overlap_chars=150,
-            )
-            for pdf_path in pdf_paths:
-                new_retriever.add_pdf(pdf_path)
-
-            new_retriever.build_index(show_progress=True)
-            os.makedirs(INDEX_DIR, exist_ok=True)
-            new_retriever.save(INDEX_DIR)
-
-            # Clear cached retriever and reload
-            load_retriever_and_index.clear()
-            st.success("Index rebuilt successfully from uploaded PDFs.")
-
 # ==========================
 # Load retriever and model
 # ==========================
@@ -235,13 +171,33 @@ except Exception as e:
     retriever = None
     model = None
 
-# Question answering
 
-st.subheader("2. Ask questions")
+# ==========================
+# Question answering layout
+# ==========================
+
+st.subheader("Ask a question over the document collection")
 
 question = st.text_area("Enter your question", height=120)
 
-if st.button("Run"):
+col_left, col_right = st.columns([2, 1])
+
+with col_left:
+    run_clicked = st.button("Run")
+
+with col_right:
+    example_clicked = st.button("Use example question")
+
+if example_clicked:
+    # 你可以改成更适合你论文的一句
+    question = "What are the main sources of interest rate risk discussed across these papers?"
+    st.session_state["question_prefill"] = question
+
+# 手动把 prefill 写回 text_area（简单做法）
+if "question_prefill" in st.session_state:
+    question = st.session_state["question_prefill"]
+
+if run_clicked:
     if retriever is None or model is None:
         st.error("Retriever or model not available. Make sure the index is built and the model is loaded.")
     elif not question.strip():
@@ -256,6 +212,7 @@ if st.button("Run"):
             context = "\n\n".join(context_blocks)
             prompt = build_rag_prompt(question, context)
         else:
+            chunks = []
             context = None
             prompt = (
                 "You are a general-purpose assistant.\n"
@@ -274,13 +231,24 @@ if st.button("Run"):
                 top_p=top_p,
             )
 
-        st.subheader("Answer")
-        st.write(answer)
+        # === Display answer and context in two columns ===
+        col_ans, col_ctx = st.columns([2, 1])
 
-        if mode == "RAG" and context is not None:
-            st.subheader("Retrieved Context")
-            with st.expander("Show retrieved chunks"):
-                st.text(context)
+        with col_ans:
+            st.subheader("Answer")
+            st.write(answer)
+
+        with col_ctx:
+            if mode == "RAG" and chunks:
+                st.subheader("Top retrieved chunks")
+                for i, c in enumerate(chunks, start=1):
+                    with st.expander(f"Chunk {i}  —  {c.get('doc_id', 'doc')} [#{c.get('chunk_id', '?')}]"):
+                        st.write(c.get("text", ""))
+                        score = c.get("score", None)
+                        if score is not None:
+                            st.caption(f"Score: {score:.4f}")
+            elif mode == "Baseline":
+                st.info("Baseline mode: no retrieved context is used.")
 
 
 
