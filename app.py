@@ -13,7 +13,7 @@ UPLOAD_DIR = os.path.join(PROJECT_ROOT, "uploaded_pdfs")
 
 
 st.set_page_config(page_title="MultiDocRAG Demo", layout="wide")
-st.title("MultiDocRAG: Multi-Document RAG Demo")
+st.title("MultiDocRAG: Demo with PDF Upload")
 
 st.markdown(
     """
