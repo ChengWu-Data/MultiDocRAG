@@ -26,9 +26,8 @@ It uses:
 """
 )
 
-# ==========================
 # Sidebar settings
-# ==========================
+
 
 with st.sidebar:
     st.header("Settings")
@@ -48,9 +47,8 @@ with st.sidebar:
     )
 
 
-# ==========================
+
 # Cached loaders
-# ==========================
 
 @st.cache_resource(show_spinner=True)
 def load_retriever_and_index(index_dir: str) -> MultiDocRetriever:
@@ -161,9 +159,8 @@ Provide a concise answer in 1–2 short paragraphs.
 """
 
 
-# ==========================
+
 # PDF upload + index rebuild
-# ==========================
 
 st.subheader("1. Upload PDFs and rebuild index")
 
@@ -238,9 +235,7 @@ except Exception as e:
     retriever = None
     model = None
 
-# ==========================
 # Question answering
-# ==========================
 
 st.subheader("2. Ask questions")
 
