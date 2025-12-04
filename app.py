@@ -13,6 +13,10 @@ INDEX_DIR = os.path.join(PROJECT_ROOT, "index_store")
 st.set_page_config(page_title="MultiDocRAG Demo", layout="wide")
 st.title("MultiDocRAG: Multi-Document RAG Demo")
 
+st.write(f"DEBUG: app file = {__file__}")
+st.write(f"DEBUG: cwd = {os.getcwd()}")
+
+
 st.markdown(
     """
 This app demonstrates the MultiDocRAG pipeline:
