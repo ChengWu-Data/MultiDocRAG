@@ -37,7 +37,8 @@ def eval_rag_answer(
         retrieved_texts: list of plain-text chunk contents
     """
 
-    chunks = retriever.retrieve(question, k=k)
+    chunks = retriever.retrieve(question, top_k=k)
+
 
     context_blocks: List[str] = []
     retrieved_texts: List[str] = []
