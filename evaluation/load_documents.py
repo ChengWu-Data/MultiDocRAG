@@ -39,7 +39,7 @@ def build_eval_retriever(pdf_dir: str) -> MultiDocRetriever:
         retriever.add_pdf(str(p))
 
     # Build index in memory, do not save to disk
-    retriever.build_index(show_progress=True)
+    retriever.build_index()
 
     return retriever
 
