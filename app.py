@@ -4,7 +4,7 @@ import json
 import streamlit as st
 
 from src.retriever import MultiDocRetriever
-from src.llm_api import generate_llm_response  # 🔹 使用 API LLM，而不是本地模型
+from src.llm_api import generate_llm_response  
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 INDEX_DIR = os.path.join(PROJECT_ROOT, "index_store")
