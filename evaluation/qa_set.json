@@ -1,0 +1,170 @@
+{
+  "answerable": [
+
+    {
+      "id": "hb1",
+      "group": "human_bias",
+      "question": "What is the central research question addressed in the paper on anchoring bias in AI models?",
+      "gold_answer": "The paper examines whether modern large language models exhibit anchoring bias—systematic shifts in numerical forecasts due to exposure to high or low anchors—and evaluates mitigation strategies such as zero-shot chain-of-thought prompting and 'ignore previous' instructions."
+    },
+    {
+      "id": "hb2",
+      "group": "human_bias",
+      "question": "Which four large language models are evaluated for anchoring bias in the study?",
+      "gold_answer": "The study evaluates GPT-4, Claude 2, Gemini Pro, and GPT-3.5."
+    },
+    {
+      "id": "hb3",
+      "group": "human_bias",
+      "question": "According to the paper, how is anchoring bias measured during the experiment stage?",
+      "gold_answer": "Anchoring bias is measured by comparing forecast distributions generated after exposure to low anchors and high anchors, using statistical tests such as t-tests to determine whether the anchor influences prediction magnitude."
+    },
+    {
+      "id": "hb4",
+      "group": "human_bias",
+      "question": "What variables do the authors ask the LLMs to forecast when testing for anchoring effects?",
+      "gold_answer": "The study asks the LLMs to forecast five quantities: the S&P 500 Index, the Federal Funds rate, the 10-year Treasury yield, the EUR/USD exchange rate, and the Bitcoin price."
+    },
+    {
+      "id": "hb5",
+      "group": "human_bias",
+      "question": "What do the results indicate about the effectiveness of Chain-of-Thought prompting as a mitigation strategy?",
+      "gold_answer": "Chain-of-Thought prompting shows limited and inconsistent effectiveness, reducing anchoring for some GPT-4 variables but failing to eliminate anchoring for most models."
+    },
+    {
+      "id": "hb6",
+      "group": "human_bias",
+      "question": "What is one reason the authors include extreme or implausible anchors in the experiment?",
+      "gold_answer": "They include extreme anchors to test whether LLMs, like humans, are susceptible to anchoring even when the anchor is implausible or irrelevant to the true forecast value."
+    },
+
+
+    {
+      "id": "ab1",
+      "group": "anchoring_users",
+      "question": "What is the primary objective of the paper on anchoring bias and mental model formation?",
+      "gold_answer": "The paper investigates how anchoring bias affects users' mental model formation when interacting with AI systems and explores how interface design shapes cognitive processing during human-AI interaction."
+    },
+    {
+      "id": "ab2",
+      "group": "anchoring_users",
+      "question": "How does anchoring bias influence user reasoning according to the paper?",
+      "gold_answer": "Anchoring causes users to rely heavily on initial reference values, leading to less flexible reasoning and reduced willingness to revise initial assumptions when interpreting AI-generated information."
+    },
+    {
+      "id": "ab3",
+      "group": "anchoring_users",
+      "question": "What research method is primarily used to study anchoring effects in user interactions?",
+      "gold_answer": "The paper uses controlled user experiments that manipulate anchor values in interface designs to measure how they influence subsequent judgments and mental model development."
+    },
+    {
+      "id": "ab4",
+      "group": "anchoring_users",
+      "question": "According to the authors, why is anchoring particularly problematic in AI-assisted decision environments?",
+      "gold_answer": "Anchoring is problematic because AI systems often present information in structured forms that unintentionally reinforce users' initial assumptions, potentially amplifying cognitive biases and reducing decision accuracy."
+    },
+    {
+      "id": "ab5",
+      "group": "anchoring_users",
+      "question": "What do the findings imply about human-AI collaboration?",
+      "gold_answer": "The findings imply that human-AI collaboration requires careful interface and prompt design, because users' mental models are highly sensitive to early cues and default values provided by the AI."
+    },
+    {
+      "id": "ab6",
+      "group": "anchoring_users",
+      "question": "What role do interface anchors play in shaping mental models?",
+      "gold_answer": "Interface anchors act as cognitive reference points that steer users' interpretations and expectations, significantly shaping how mental models are constructed and updated."
+    },
+
+
+    {
+      "id": "tr1",
+      "group": "translation_strategy",
+      "question": "What is the purpose of the MAPS framework proposed in the translation strategy paper?",
+      "gold_answer": "MAPS is proposed to analyze and characterize translation strategies used by large language models, revealing whether they mimic human-like translation processes rather than simple direct substitution."
+    },
+    {
+      "id": "tr2",
+      "group": "translation_strategy",
+      "question": "What generally distinguishes human translation strategy from literal machine translation?",
+      "gold_answer": "Human translation strategies involve semantic restructuring, pragmatic reasoning, and contextual interpretation, whereas literal machine translation tends to perform more direct word- or phrase-level mappings."
+    },
+    {
+      "id": "tr3",
+      "group": "translation_strategy",
+      "question": "What evidence do the authors provide to support the claim that LLMs use human-like strategies?",
+      "gold_answer": "The authors show that LLM outputs demonstrate non-literal reorganization, inference of implied meaning, and sensitivity to discourse-level context, which align with known human translation behaviors."
+    },
+    {
+      "id": "tr4",
+      "group": "translation_strategy",
+      "question": "What task or dataset is used to evaluate translation strategies?",
+      "gold_answer": "The paper evaluates translation strategies using controlled translation tasks where multiple candidate outputs can reveal whether the model applies inference, compression, or semantic reorganization."
+    },
+    {
+      "id": "tr5",
+      "group": "translation_strategy",
+      "question": "How does MAPS help differentiate between strategies?",
+      "gold_answer": "MAPS decomposes translation outputs into categories such as compression, expansion, paraphrasing, and inference, enabling systematic comparison between LLM strategies and human translations."
+    },
+    {
+      "id": "tr6",
+      "group": "translation_strategy",
+      "question": "What does the paper conclude about the resemblance between LLM and human strategies?",
+      "gold_answer": "The paper concludes that LLMs exhibit notable alignment with human translation strategies, although the similarity varies by context and model behavior."
+    },
+
+
+    {
+      "id": "cross1",
+      "group": "cross_papers",
+      "question": "How do the two anchoring-related papers differ in their research focus?",
+      "gold_answer": "The LLM anchoring paper studies cognitive bias inside AI model outputs, while the user mental-model paper studies how anchoring affects humans interacting with AI systems. One examines model bias; the other examines human bias."
+    },
+    {
+      "id": "cross2",
+      "group": "cross_papers",
+      "question": "What common theme appears across all three papers regarding AI and human reasoning?",
+      "gold_answer": "All three papers highlight that AI systems embody or influence human-like reasoning patterns, demonstrating that both models and users are sensitive to context, framing, and cognitive cues."
+    },
+    {
+      "id": "cross3",
+      "group": "cross_papers",
+      "question": "What implications do the papers collectively suggest for AI system design?",
+      "gold_answer": "They suggest that AI system design must account for both model-level biases and human-level cognitive vulnerabilities, requiring deliberate prompt, interface, and workflow design to ensure reliable decision-making."
+    }
+  ],
+
+  "unanswerable": [
+    {
+      "id": "u1",
+      "question": "What is the exact formal mathematical theorem proven in the anchoring-bias LLM paper?",
+      "reason": "The paper does not present or prove any formal mathematical theorem."
+    },
+    {
+      "id": "u2",
+      "question": "Which section of the translation strategy paper discusses reinforcement learning loss functions?",
+      "reason": "The paper does not analyze RL loss functions."
+    },
+    {
+      "id": "u3",
+      "question": "What architecture does the user anchoring paper propose for a new neural network?",
+      "reason": "The user-side anchoring paper does not propose any new neural architecture."
+    },
+    {
+      "id": "u4",
+      "question": "What year did the authors first release the MAPS framework?",
+      "reason": "The paper does not state a release year nor treat MAPS as a software release."
+    },
+    {
+      "id": "u5",
+      "question": "How many parameters does the model evaluated in the anchoring-bias experiment contain?",
+      "reason": "The paper does not mention parameter counts of the LLMs."
+    },
+    {
+      "id": "u6",
+      "question": "What hardware accelerator was used to run the translation experiments?",
+      "reason": "The translation paper does not report hardware details."
+    }
+  ]
+}
