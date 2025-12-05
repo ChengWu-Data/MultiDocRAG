@@ -1,5 +1,9 @@
 # evaluation/eval_pipeline.py
 
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 from typing import List, Any, Tuple
 
 from utils.embedder import embed_model
