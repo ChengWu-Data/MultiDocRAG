@@ -2,18 +2,19 @@
 
 import sys
 from pathlib import Path
+
+# Add project root to sys.path so that `src` can be imported
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from typing import List, Any, Tuple
 
-from utils.embedder import embed_model
-from utils.indexer import search_faiss
 from src.llm_api import generate_llm_response
+from src.retriever import MultiDocRetriever
 
 
 def chunk_to_text(chunk: Any) -> str:
     """
-    Convert a chunk to plain text.
+    Convert a retrieved chunk object to plain text.
     """
     if isinstance(chunk, dict):
         return str(chunk.get("text", ""))
@@ -22,32 +23,37 @@ def chunk_to_text(chunk: Any) -> str:
 
 def eval_rag_answer(
     question: str,
-    index: Any,
-    chunks: List[Any],
+    retriever: MultiDocRetriever,
     k: int = 6,
 ) -> Tuple[str, List[str]]:
     """
     Evaluation-only RAG pipeline:
-    - Perform FAISS retrieval from the evaluation index.
-    - Build context.
-    - Call the LLM (API) to generate an answer.
+    - Use MultiDocRetriever to retrieve top-k chunks.
+    - Build a context string.
+    - Call the LLM API to generate an answer.
+
+    Returns:
+        answer: generated answer text
+        retrieved_texts: list of plain-text chunk contents
     """
 
-    # Encode question → 1D vector
-    q_emb = embed_model.encode([question])[0]
+    chunks = retriever.retrieve(question, k=k)
 
-    # FAISS search
-    scores, ids = search_faiss(index, q_emb, k)
+    context_blocks: List[str] = []
+    retrieved_texts: List[str] = []
 
-    # Convert retrieved chunks to text
-    retrieved_texts = [
-        chunk_to_text(chunks[i])
-        for i in ids
-    ]
+    for c in chunks:
+        text = chunk_to_text(c)
+        retrieved_texts.append(text)
 
-    context = "\n\n".join(retrieved_texts) if retrieved_texts else "No context retrieved."
+        if isinstance(c, dict):
+            header = f"[{c.get('doc_id', 'doc')} — chunk {c.get('chunk_id', '?')}]"
+            context_blocks.append(header + "\n" + text)
+        else:
+            context_blocks.append(text)
 
-    # Build prompt
+    context = "\n\n".join(context_blocks) if context_blocks else "No context retrieved."
+
     prompt = f"""
 Use ONLY the provided context to answer the question.
 If the context is insufficient, say:
@@ -60,7 +66,6 @@ Question:
 {question}
 """
 
-    # LLM API call
     answer = generate_llm_response(
         prompt=prompt,
         temperature=0.2,
@@ -68,4 +73,5 @@ Question:
     )
 
     return answer, retrieved_texts
+
 
