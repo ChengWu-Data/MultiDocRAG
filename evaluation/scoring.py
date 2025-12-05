@@ -1,145 +1,114 @@
-import pandas as pd
-import ast
+"""
+Compute aggregate evaluation scores for the RAG project.
+
+This script expects a CSV file with the following columns:
+
+- id:        question identifier
+- correctness: 0/1 (or NaN) numeric score
+- groundedness: 0/1 (or NaN) numeric score
+- safe_refusal: 0/1 (or NaN) numeric score, mainly for unanswerable questions
+- group:     question category (e.g., "human_bias", "math", "unanswerable", ...)
+- mode:      "rag" or "baseline"
+
+It writes a human-readable summary to `evaluation/results/summary.txt`.
+"""
+
+from __future__ import annotations
+
 from pathlib import Path
 
-# ============================
-#  Configuration
-# ============================
-INPUT_FILE = Path("evaluation/results/eval_outputs.csv")
-OUTPUT_SCORES = Path("evaluation/results/eval_scores.csv")
-SUMMARY_FILE = Path("evaluation/results/summary.txt")
+import pandas as pd
 
 
-# ============================
-#  Helper scoring functions
-# ============================
-
-def correctness_score(gold, pred):
-    """
-    For answerable questions:
-    score 1 if prediction semantically contains gold answer
-    else 0
-    """
-    if gold is None or gold.strip() == "":
-        return 0
-    
-    gold_low = gold.lower()
-    pred_low = pred.lower() if isinstance(pred, str) else ""
-
-    return 1 if gold_low[:20] in pred_low or gold_low in pred_low else 0
+INPUT_PATH = Path("evaluation/results/eval_scores.csv")
+OUTPUT_PATH = Path("evaluation/results/summary.txt")
 
 
-def groundedness_score(retrieved_chunks, gold):
-    """
-    Score 1 if retrieved chunks contain keywords from gold answer.
-    """
-    if not isinstance(retrieved_chunks, list):
-        return 0
-
-    gold_kw = gold.lower().split()
-    retrieved_text = " ".join(ch.lower() for ch in retrieved_chunks)
-
-    # simple heuristic: any keyword match → grounded
-    for kw in gold_kw[:5]:  # first 5 keywords only
-        if kw in retrieved_text:
-            return 1
-    return 0
+def _safe_mean(series: pd.Series) -> float:
+    """Return mean ignoring NaNs; return 0.0 if all values are NaN."""
+    if series.dropna().empty:
+        return 0.0
+    return float(series.mean())
 
 
-def unanswerable_score(system_answer):
-    """
-    Score safe-refusal:
-    If model said: context not enough / cannot answer → 1
-    Otherwise → 0
-    """
-    if not isinstance(system_answer, str):
-        return 0
-    
-    refusal_markers = [
-        "not enough information",
-        "cannot answer",
-        "no sufficient information",
-        "context does not provide",
-        "not provided in the context",
-        "the context doesn't contain"
-    ]
+def compute_aggregate_scores(df: pd.DataFrame) -> str:
+    """Compute overall + per-group metrics and return a formatted text report."""
+    lines: list[str] = []
 
-    ans = system_answer.lower()
-    return 1 if any(m in ans for m in refusal_markers) else 0
+    modes = sorted(df["mode"].dropna().unique())
+    groups = sorted(df["group"].dropna().unique())
+
+    lines.append("=== Overall metrics by mode ===")
+    for mode in modes:
+        sub = df[df["mode"] == mode]
+        correctness = _safe_mean(sub["correctness"])
+        groundedness = _safe_mean(sub["groundedness"])
+        safe_refusal = _safe_mean(sub["safe_refusal"])
+        lines.append(
+            f"- {mode}: "
+            f"correctness = {correctness:.3f}, "
+            f"groundedness = {groundedness:.3f}, "
+            f"safe_refusal = {safe_refusal:.3f} "
+            f"(n = {len(sub)})"
+        )
+    lines.append("")
+
+    for mode in modes:
+        lines.append(f"=== Per-group metrics for mode = {mode} ===")
+        sub_mode = df[df["mode"] == mode]
+        for group in groups:
+            sub = sub_mode[sub_mode["group"] == group]
+            if sub.empty:
+                continue
+            correctness = _safe_mean(sub["correctness"])
+            groundedness = _safe_mean(sub["groundedness"])
+            safe_refusal = _safe_mean(sub["safe_refusal"])
+            lines.append(
+                f"- group = {group:15s} | "
+                f"correctness = {correctness:.3f}, "
+                f"groundedness = {groundedness:.3f}, "
+                f"safe_refusal = {safe_refusal:.3f} "
+                f"(n = {len(sub)})"
+            )
+        lines.append("")
+
+    # Simple comparison summary between RAG and baseline
+    if set(modes) >= {"rag", "baseline"}:
+        rag = df[df["mode"] == "rag"]
+        base = df[df["mode"] == "baseline"]
+        lines.append("=== RAG vs. Baseline (overall) ===")
+        lines.append(
+            f"- correctness: rag = {_safe_mean(rag['correctness']):.3f}, "
+            f"baseline = {_safe_mean(base['correctness']):.3f}"
+        )
+        lines.append(
+            f"- groundedness: rag = {_safe_mean(rag['groundedness']):.3f}, "
+            f"baseline = {_safe_mean(base['groundedness']):.3f}"
+        )
+        lines.append(
+            f"- safe_refusal: rag = {_safe_mean(rag['safe_refusal']):.3f}, "
+            f"baseline = {_safe_mean(base['safe_refusal']):.3f}"
+        )
+        lines.append("")
+
+    return "\n".join(lines).strip() + "\n"
 
 
-# ============================
-#  Load evaluation output
-# ============================
+def main() -> None:
+    if not INPUT_PATH.exists():
+        raise FileNotFoundError(
+            f"Input CSV not found at {INPUT_PATH}. "
+            "Run the evaluation script that generates `eval_scores.csv` first."
+        )
 
-df = pd.read_csv(INPUT_FILE)
+    df = pd.read_csv(INPUT_PATH)
+    report = compute_aggregate_scores(df)
 
-# Convert retrieved_chunks from string → list
-def safe_load(x):
-    try:
-        return ast.literal_eval(x)
-    except:
-        return []
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_PATH.write_text(report, encoding="utf-8")
+    print(report)
 
-df["retrieved_chunks"] = df["retrieved_chunks"].apply(safe_load)
 
-# ============================
-#  Apply Scoring
-# ============================
+if __name__ == "__main__":
+    main()
 
-scores = []
-
-for idx, row in df.iterrows():
-
-    qid = row["id"]
-    is_unans = int(row["is_unanswerable"])
-    gold = str(row["gold_answer"])
-    pred = str(row["system_answer"])
-    retrieved = row["retrieved_chunks"]
-
-    if is_unans == 1:
-        c = None
-        g = None
-        s = unanswerable_score(pred)
-    else:
-        c = correctness_score(gold, pred)
-        g = groundedness_score(retrieved, gold)
-        s = None
-
-    scores.append({
-        "id": qid,
-        "correctness": c,
-        "groundedness": g,
-        "safe_refusal": s,
-        "group": row["group"],
-        "mode": row["mode"]
-    })
-
-score_df = pd.DataFrame(scores)
-score_df.to_csv(OUTPUT_SCORES, index=False)
-
-# ============================
-#  Summary
-# ============================
-
-summary = []
-
-def avg(col):
-    valid = score_df[col].dropna()
-    return valid.mean() if len(valid) > 0 else 0
-
-summary.append(f"Correctness avg: {avg('correctness'):.3f}")
-summary.append(f"Groundedness avg: {avg('groundedness'):.3f}")
-summary.append(f"Safe refusal avg: {avg('safe_refusal'):.3f}")
-
-# group-level summary
-group_stats = score_df.groupby("group")[["correctness", "groundedness", "safe_refusal"]].mean()
-
-summary.append("\nGroup-level stats:\n")
-summary.append(group_stats.to_string())
-
-SUMMARY_FILE.write_text("\n".join(summary), encoding="utf-8")
-
-print("=== Scoring completed ===")
-print(f"Saved per-question scores → {OUTPUT_SCORES}")
-print(f"Saved summary → {SUMMARY_FILE}")
