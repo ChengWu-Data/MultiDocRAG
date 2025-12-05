@@ -22,7 +22,6 @@ def build_eval_retriever(pdf_dir: str) -> MultiDocRetriever:
         raise FileNotFoundError(f"PDF directory does not exist: {pdf_dir}")
 
     retriever = MultiDocRetriever(
-        model_name="all-MiniLM-L6-v2",
         max_chars=800,
         overlap_chars=150,
     )
