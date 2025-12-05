@@ -1,22 +1,49 @@
 # evaluation/eval_pipeline.py
 
-from sentence_transformers import SentenceTransformer
-import numpy as np
+from typing import List, Any, Tuple
+
+from utils.embedder import embed_model
 from utils.indexer import search_faiss
 from src.llm_api import generate_llm_response
 
-embed_model = SentenceTransformer("all-MiniLM-L6-v2")
 
-def eval_rag_answer(question, index, chunks, k=6):
-    # encode question
-    q_emb = embed_model.encode([question])
+def chunk_to_text(chunk: Any) -> str:
+    """
+    Convert a chunk to plain text.
+    """
+    if isinstance(chunk, dict):
+        return str(chunk.get("text", ""))
+    return str(chunk)
+
+
+def eval_rag_answer(
+    question: str,
+    index: Any,
+    chunks: List[Any],
+    k: int = 6,
+) -> Tuple[str, List[str]]:
+    """
+    Evaluation-only RAG pipeline:
+    - Perform FAISS retrieval from the evaluation index.
+    - Build context.
+    - Call the LLM (API) to generate an answer.
+    """
+
+    # Encode question → 1D vector
+    q_emb = embed_model.encode([question])[0]
+
+    # FAISS search
     scores, ids = search_faiss(index, q_emb, k)
 
-    retrieved = [chunks[i] for i in ids]
+    # Convert retrieved chunks to text
+    retrieved_texts = [
+        chunk_to_text(chunks[i])
+        for i in ids
+    ]
 
-    # build context
-    context = "\n\n".join(retrieved)
+    context = "\n\n".join(retrieved_texts) if retrieved_texts else "No context retrieved."
 
+    # Build prompt
     prompt = f"""
 Use ONLY the provided context to answer the question.
 If the context is insufficient, say:
@@ -28,6 +55,13 @@ Context:
 Question:
 {question}
 """
-    answer = generate_llm_response(prompt=prompt, temperature=0.2, max_tokens=256)
 
-    return answer, retrieved
+    # LLM API call
+    answer = generate_llm_response(
+        prompt=prompt,
+        temperature=0.2,
+        max_tokens=256,
+    )
+
+    return answer, retrieved_texts
+
