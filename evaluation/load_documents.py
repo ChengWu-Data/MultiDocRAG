@@ -22,9 +22,10 @@ def build_eval_retriever(pdf_dir: str) -> MultiDocRetriever:
         raise FileNotFoundError(f"PDF directory does not exist: {pdf_dir}")
 
     retriever = MultiDocRetriever(
-        max_chars=800,
-        overlap_chars=150,
+        chunk_size=800,
+        chunk_overlap=150,
     )
+
 
     pdf_paths: List[Path] = [
         p for p in pdf_dir_path.iterdir()
