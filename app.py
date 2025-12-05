@@ -47,7 +47,8 @@ def format_context(chunks: List[Dict]) -> str:
         page = c.get("page", "?")
         score = c.get("score", 0.0)
         lines.append(
-            f"[{i}] (score={score:.3f}) Source: {os.path.basename(source)}, page {page}\n{c.get('text','').strip()}"
+            f"[{i}] (score={score:.3f}) Source: {os.path.basename(source)}, page {page}\n"
+            f"{c.get('text','').strip()}"
         )
     return "\n\n---\n\n".join(lines)
 
@@ -58,7 +59,11 @@ def render_sidebar() -> Dict:
 
     # Model selection
     model_display_names = list(AVAILABLE_MODELS.keys())
-    default_index = model_display_names.index("LLaMA 3.1 8B (fast)") if "LLaMA 3.1 8B (fast)" in model_display_names else 0
+    default_index = (
+        model_display_names.index("LLaMA 3.1 8B (fast)")
+        if "LLaMA 3.1 8B (fast)" in model_display_names
+        else 0
+    )
     model_name_ui = st.sidebar.selectbox(
         "Model",
         model_display_names,
@@ -94,7 +99,8 @@ def render_sidebar() -> Dict:
     force_rebuild = st.sidebar.checkbox(
         "Force rebuild index",
         value=False,
-        help="If checked, the PDF corpus will be re-parsed and a fresh FAISS index will be created on the next question.",
+        help="If checked, the PDF corpus will be re-parsed and a fresh FAISS "
+             "index will be created on the next question.",
     )
 
     st.sidebar.markdown("---")
@@ -103,7 +109,7 @@ def render_sidebar() -> Dict:
         """
         This app is a **Multi-Document RAG assistant** for the course project.
 
-        - Upload / store multiple PDFs in the `data/` folder.
+        - Upload / store multiple PDFs in the `data/` folder (see uploader on main page).
         - The retriever chunks the text, builds dense embeddings (MiniLM-L6-v2),
           and indexes them using **FAISS**.
         - In **RAG mode**, the model only sees the retrieved chunks as context.
@@ -136,6 +142,47 @@ def main() -> None:
         "to compare the impact of retrieval."
     )
 
+    # === NEW: PDF uploader block ===
+    st.subheader("📂 PDF corpus")
+
+    uploaded_files = st.file_uploader(
+        "Upload one or more PDF files",
+        type=["pdf"],
+        accept_multiple_files=True,
+        help="Uploaded files are stored in the `data/` folder on the server.",
+    )
+
+    if uploaded_files:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        saved_names = []
+        for file in uploaded_files:
+            file_path = os.path.join(DATA_DIR, file.name)
+            with open(file_path, "wb") as f:
+                f.write(file.getbuffer())
+            saved_names.append(file.name)
+
+        st.success(
+            f"Saved {len(saved_names)} file(s) to `{DATA_DIR}/`: "
+            + ", ".join(saved_names)
+        )
+        # Invalidate retriever so the next question rebuilds the index
+        st.session_state["retriever"] = None
+
+    # Show current PDFs in data/ (if any)
+    if os.path.isdir(DATA_DIR):
+        existing_pdfs = [
+            f for f in os.listdir(DATA_DIR)
+            if f.lower().endswith(".pdf")
+        ]
+        if existing_pdfs:
+            st.caption(
+                "Current PDFs in `data/`: " + ", ".join(sorted(existing_pdfs))
+            )
+        else:
+            st.caption("No PDFs found in `data/` yet.")
+
+    st.markdown("---")
+
     # Chat history display
     for msg in st.session_state["messages"]:
         with st.chat_message(msg["role"]):
@@ -156,7 +203,9 @@ def main() -> None:
         try:
             if config["mode"].startswith("RAG"):
                 retriever = ensure_retriever(force_rebuild=config["force_rebuild"])
-                retrieved_chunks = retriever.retrieve(user_query, top_k=config["top_k"])
+                retrieved_chunks = retriever.retrieve(
+                    user_query, top_k=config["top_k"]
+                )
                 context_str = format_context(retrieved_chunks)
 
                 with st.expander("🔍 Retrieved context", expanded=False):
@@ -178,7 +227,9 @@ def main() -> None:
                 )
 
             placeholder.markdown(answer)
-            st.session_state["messages"].append({"role": "assistant", "content": answer})
+            st.session_state["messages"].append(
+                {"role": "assistant", "content": answer}
+            )
         except Exception as exc:  # noqa: BLE001
             error_msg = f"⚠️ Failed to load retriever or model: {exc}"
             placeholder.error(error_msg)
@@ -186,4 +237,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
