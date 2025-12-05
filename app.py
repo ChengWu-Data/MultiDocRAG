@@ -22,7 +22,87 @@ EXAMPLE_QUESTIONS = [
 EXAMPLE_LABEL = "(Choose an example question)"
 
 st.set_page_config(page_title="MultiDocRAG Demo", layout="wide")
-st.title("MultiDocRAG: Multi-Document RAG Demo")
+
+# ==========================
+# Global styling & hero header
+# ==========================
+
+st.markdown(
+    """
+    <style>
+    /* Purple aesthetic full background */
+    .main {
+        background: linear-gradient(180deg, #ede9fe 0%, #f5f3ff 40%, #faf5ff 100%) !important;
+    }
+    .block-container {
+        padding-top: 2.5rem;
+        padding-bottom: 3rem;
+    }
+    .app-hero-title {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+        color: #4c1d95;
+    }
+    .app-hero-subtitle {
+        font-size: 0.98rem;
+        color: #4b5563;
+        margin-bottom: 1.2rem;
+    }
+    .app-hero-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: #4c1d95;
+        background: rgba(129, 140, 248, 0.12);
+        border: 1px solid rgba(129, 140, 248, 0.35);
+        margin-top: 0.6rem;
+        margin-bottom: 0.6rem;
+    }
+    .app-card {
+        padding: 1.25rem 1.5rem;
+        border-radius: 0.9rem;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 8px 20px rgba(76, 29, 149, 0.05);
+        margin-bottom: 1.5rem;
+    }
+    .app-card h3, .app-card h2 {
+        margin-top: 0;
+    }
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f3e8ff 0%, #f8f5ff 60%, #ede9fe 100%);
+        border-right: 1px solid #e5e7eb;
+    }
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        color: #4c1d95;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+    <div>
+        <div class="app-hero-tag">
+            <span>Multi-document QA</span>
+            <span>·</span>
+            <span>RAG + lightweight memory</span>
+        </div>
+        <div class="app-hero-title">MultiDocRAG: Multi-Document RAG Demo</div>
+        <div class="app-hero-subtitle">
+            Ask questions across multiple research papers using a retrieval-augmented pipeline
+            with a small, locally-runnable language model and session-level conversational memory.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown(
     """
@@ -38,21 +118,21 @@ This app demonstrates the MultiDocRAG pipeline:
 
 st.markdown(
     """
-### Why a small default model?
+### Why this default model?
 
-By default, we load a very small toy model, `sshleifer/tiny-gpt2`.  
-It runs quickly on a laptop CPU, but the answers can be simple or even a bit noisy.  
-The primary goal of this demo is to showcase the **pipeline**:
+By default, we load `Qwen/Qwen2.5-1.5B-Instruct`.  
+It is a small instruction-tuned model that runs comfortably on a single laptop GPU
+(or even CPU with patience) while giving much more reasonable answers than tiny toy
+models. The goal of this demo is still to showcase the **pipeline**:
 
 > PDFs → chunks → embeddings → retrieval → prompt construction → LLM answer
 
-rather than raw model power.
+rather than to push raw model size.
 
-For stronger answers, you can replace the model in the sidebar with a small
-instruction-tuned chat model such as `TinyLlama/TinyLlama-1.1B-Chat-v1.0`
-when running on CPU/GPU.  
-The exact same retrieval pipeline also works with larger models (e.g., LLaMA/Mistral/Phi)
-that we use in our experiments and evaluation.
+If you want to experiment with different trade-offs, you can change the model in the sidebar:
+- `TinyLlama/TinyLlama-1.1B-Chat-v1.0` – lighter and faster, but weaker.
+- `microsoft/phi-2` – stronger reasoning if you have more compute.
+The retrieval pipeline stays exactly the same; only the LLM backbone changes.
 """
 )
 
@@ -64,14 +144,17 @@ st.markdown("---")
 # ==========================
 
 with st.sidebar:
-    st.header("Settings")
+    st.header("⚙️ Settings")
 
-    default_model_name = "sshleifer/tiny-gpt2"
+    # Default to Qwen 2.5 1.5B Instruct
+    default_model_name = "Qwen/Qwen2.5-1.5B-Instruct"
     model_name = st.text_input("Model name", value=default_model_name)
     st.caption(
         "This should be a Hugging Face causal LM name.\n\n"
-        "For better answers, try an instruction-tuned chat model such as "
-        "`TinyLlama/TinyLlama-1.1B-Chat-v1.0`."
+        "Default: `Qwen/Qwen2.5-1.5B-Instruct` (balanced quality vs. speed).\n"
+        "Other options you can try:\n"
+        "- `TinyLlama/TinyLlama-1.1B-Chat-v1.0` (very light / fast).\n"
+        "- `microsoft/phi-2` (stronger reasoning if you have more compute)."
     )
 
     k = st.slider("Top-k retrieved chunks", min_value=1, max_value=10, value=6, step=1)
@@ -188,10 +271,19 @@ def generate_from_model(
 # ==========================
 
 def format_history(history, max_turns: int = 3) -> str:
+<<<<<<< HEAD
     """Format recent conversation history for injection into the prompt."""
     if not history:
         return "No previous conversation.\n"
     # last `max_turns` user–assistant exchanges => 2 * max_turns entries
+=======
+    """
+    Format recent conversation history for injection into the prompt.
+    max_turns = number of user–assistant exchanges to keep.
+    """
+    if not history:
+        return "No previous conversation.\n"
+>>>>>>> e5eed44 (Polish Streamlit UI and set Qwen2.5-1.5B as default model)
     recent = history[-2 * max_turns :]
     lines = []
     for role, text in recent:
@@ -234,6 +326,8 @@ def build_baseline_prompt(question: str, history) -> str:
 # ==========================
 # Section 1: Upload PDFs & rebuild index
 # ==========================
+
+st.markdown('<div class="app-card">', unsafe_allow_html=True)
 
 st.subheader("1. Upload PDFs and rebuild index")
 st.caption("Upload one or more PDFs, then click the button to (re)build a fresh FAISS index from them.")
@@ -319,6 +413,7 @@ if rebuild_clicked:
             load_retriever_and_index.clear()
             st.success("Index rebuilt successfully from uploaded PDFs.")
 
+st.markdown("</div>", unsafe_allow_html=True)
 st.markdown("---")
 
 
@@ -350,18 +445,32 @@ def load_example_callback():
 # Section 2: Question answering
 # ==========================
 
+st.markdown('<div class="app-card">', unsafe_allow_html=True)
+
 st.subheader("2. Ask a question over the document collection")
 st.caption(
     "RAG mode uses retrieved chunks from your PDFs; "
     "Baseline mode ignores them and lets the model answer from its own knowledge."
 )
 
+<<<<<<< HEAD
 if "question_text" not in st.session_state:
     st.session_state["question_text"] = ""
 
 if "history" not in st.session_state:
     st.session_state["history"] = []
 
+=======
+# Initialize question text in session_state
+if "question_text" not in st.session_state:
+    st.session_state["question_text"] = ""
+
+# Initialize conversation history (session-level memory)
+if "history" not in st.session_state:
+    st.session_state["history"] = []
+
+# Text area bound to question_text
+>>>>>>> e5eed44 (Polish Streamlit UI and set Qwen2.5-1.5B as default model)
 question = st.text_area(
     "Enter your question",
     height=120,
@@ -382,6 +491,10 @@ with col_right:
     )
     st.button("Load example", on_click=load_example_callback, use_container_width=True)
 
+<<<<<<< HEAD
+=======
+# Show current conversation history
+>>>>>>> e5eed44 (Polish Streamlit UI and set Qwen2.5-1.5B as default model)
 with st.expander("Conversation history in this session"):
     if st.session_state["history"]:
         for role, text in st.session_state["history"]:
@@ -390,6 +503,10 @@ with st.expander("Conversation history in this session"):
         st.caption("No conversation history yet. Ask a question to start the dialogue.")
 
 if run_clicked:
+<<<<<<< HEAD
+=======
+    # Read the current question text from session_state
+>>>>>>> e5eed44 (Polish Streamlit UI and set Qwen2.5-1.5B as default model)
     question = st.session_state.get("question_text", "")
 
     if retriever is None or model is None:
@@ -397,9 +514,14 @@ if run_clicked:
     elif not question.strip():
         st.warning("Please enter a question.")
     else:
+<<<<<<< HEAD
         
         st.session_state["history"].append(("user", question))
 
+=======
+        # Append the user question to history
+        st.session_state["history"].append(("user", question))
+>>>>>>> e5eed44 (Polish Streamlit UI and set Qwen2.5-1.5B as default model)
         history = st.session_state["history"]
 
         if mode == "RAG":
@@ -425,7 +547,11 @@ if run_clicked:
                 top_p=top_p,
             )
 
+<<<<<<< HEAD
         
+=======
+        # Append the assistant answer to history
+>>>>>>> e5eed44 (Polish Streamlit UI and set Qwen2.5-1.5B as default model)
         st.session_state["history"].append(("assistant", answer))
 
         col_ans, col_ctx = st.columns([2, 1])
@@ -441,7 +567,9 @@ if run_clicked:
             if mode == "RAG" and chunks:
                 st.subheader("Top retrieved chunks")
                 for i, c in enumerate(chunks, start=1):
-                    with st.expander(f"Chunk {i} — {c.get('doc_id', 'doc')} [#{c.get('chunk_id', '?')}]"):
+                    with st.expander(
+                        f"Chunk {i} — {c.get('doc_id', 'doc')} [#{c.get('chunk_id', '?')}]"
+                    ):
                         st.write(c.get("text", ""))
                         score = c.get("score", None)
                         if score is not None:
@@ -449,6 +577,7 @@ if run_clicked:
             elif mode == "Baseline":
                 st.info("Baseline mode: no retrieved context is used.")
 
+<<<<<<< HEAD
 
 
 
@@ -458,3 +587,6 @@ if run_clicked:
 
 
                 
+=======
+st.markdown("</div>", unsafe_allow_html=True)
+>>>>>>> e5eed44 (Polish Streamlit UI and set Qwen2.5-1.5B as default model)
