@@ -1,5 +1,9 @@
 # evaluation/load_documents.py
 
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 import os
 from typing import List, Tuple, Any
 
