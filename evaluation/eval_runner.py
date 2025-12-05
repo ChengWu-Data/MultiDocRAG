@@ -1,5 +1,9 @@
 # evaluation/eval_runner.py
 
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 import csv
 from pathlib import Path
 from typing import List, Dict, Any
