@@ -8,7 +8,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from typing import List, Any, Tuple
 
-from src.llm_api import generate_llm_response
+from src.llm_api import generate_llm_response, DEFAULT_MODEL
 from src.retriever import MultiDocRetriever
 
 
@@ -29,8 +29,8 @@ def eval_rag_answer(
     """
     Evaluation-only RAG pipeline:
     - Use MultiDocRetriever to retrieve top-k chunks.
-    - Build a context string.
-    - Call the LLM API to generate an answer.
+    - Build a context string (same style as app.py 里的 format_context).
+    - Call the shared LLM API to generate an answer.
 
     Returns:
         answer: generated answer text
@@ -39,36 +39,36 @@ def eval_rag_answer(
 
     chunks = retriever.retrieve(question, top_k=k)
 
-
     context_blocks: List[str] = []
     retrieved_texts: List[str] = []
 
-    for c in chunks:
+    for i, c in enumerate(chunks, start=1):
         text = chunk_to_text(c)
         retrieved_texts.append(text)
 
         if isinstance(c, dict):
-            header = f"[{c.get('doc_id', 'doc')} — chunk {c.get('chunk_id', '?')}]"
-            context_blocks.append(header + "\n" + text)
+            source = c.get("source", "unknown")
+            page = c.get("page", "?")
+            score = c.get("score", 0.0)
+
+            try:
+                source_name = Path(source).name
+            except Exception:
+                source_name = str(source)
+
+            header = f"[{i}] (score={score:.3f}) Source: {source_name}, page {page}"
+            block = header + "\n" + text.strip()
         else:
-            context_blocks.append(text)
+            block = f"[{i}]\n{text.strip()}"
 
-    context = "\n\n".join(context_blocks) if context_blocks else "No context retrieved."
+        context_blocks.append(block)
 
-    prompt = f"""
-Use ONLY the provided context to answer the question.
-If the context is insufficient, say:
-"The context does not provide enough information to answer fully."
-
-Context:
-{context}
-
-Question:
-{question}
-"""
+    context_str = "\n\n---\n\n".join(context_blocks) if context_blocks else "No context retrieved."
 
     answer = generate_llm_response(
-        prompt=prompt,
+        question=question,
+        context=context_str,
+        model_name=DEFAULT_MODEL,  
         temperature=0.2,
         max_tokens=256,
     )
