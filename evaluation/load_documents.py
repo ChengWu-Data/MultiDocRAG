@@ -2,44 +2,44 @@
 
 import sys
 from pathlib import Path
+
+# Add project root to sys.path so that `src` can be imported
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import os
-from typing import List, Tuple, Any
-
-from utils.loader import extract_text
-from utils.chunker import chunk_text
-from utils.embedder import embed_model
-from utils.indexer import build_faiss_index
+from typing import List
+from src.retriever import MultiDocRetriever
 
 
-def build_eval_index(pdf_dir: str) -> Tuple[Any, List[Any]]:
+def build_eval_retriever(pdf_dir: str) -> MultiDocRetriever:
     """
-    Build an evaluation-only FAISS index using the PDFs located in evaluation/pdfs/.
-    This does NOT modify the main system index_store.
+    Build an in-memory MultiDocRetriever using PDFs under evaluation/pdfs/.
+    This does NOT touch index_store/ or the main app index.
     """
 
-    all_chunks: List[Any] = []
+    pdf_dir_path = Path(pdf_dir)
+    if not pdf_dir_path.exists():
+        raise FileNotFoundError(f"PDF directory does not exist: {pdf_dir}")
 
-    for fname in os.listdir(pdf_dir):
-        if not fname.lower().endswith(".pdf"):
-            continue
+    retriever = MultiDocRetriever(
+        model_name="all-MiniLM-L6-v2",
+        max_chars=800,
+        overlap_chars=150,
+    )
 
-        pdf_path = os.path.join(pdf_dir, fname)
-        text = extract_text(pdf_path)
-        chunks = chunk_text(text)
-        all_chunks.extend(chunks)
-
-    if not all_chunks:
-        raise ValueError(f"No chunks found. Ensure PDFs exist in: {pdf_dir}")
-
-    # Extract raw text for embedding
-    texts = [
-        c["text"] if isinstance(c, dict) else str(c)
-        for c in all_chunks
+    pdf_paths: List[Path] = [
+        p for p in pdf_dir_path.iterdir()
+        if p.suffix.lower() == ".pdf"
     ]
 
-    embeddings = embed_model.encode(texts)
-    index = build_faiss_index(embeddings)
+    if not pdf_paths:
+        raise ValueError(f"No PDF files found in: {pdf_dir}")
 
-    return index, all_chunks
+    for p in pdf_paths:
+        retriever.add_pdf(str(p))
+
+    # Build index in memory, do not save to disk
+    retriever.build_index(show_progress=True)
+
+    return retriever
+
