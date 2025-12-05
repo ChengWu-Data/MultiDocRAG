@@ -1,132 +1,114 @@
-# MultiDocRAG
+# **MultiDocRAG — Multi-Document Retrieval-Augmented Generation System**
 
-**MultiDocRAG** is a retrieval-augmented question answering pipeline designed to support reasoning across multiple documents.
-It includes document ingestion, vector retrieval, a safe LLM reasoning layer, and an evaluation setup.
-The implementation is fully reproducible through notebooks and an executable script.
+**MultiDocRAG** is a retrieval-augmented question answering system capable of ingesting multiple documents, building a vector database, and performing context-grounded LLM reasoning.
+The system includes:
 
-This project was developed as part of *COMS 4995 — Applied Machine Learning* at Columbia University.
+* A full ingestion → retrieval → RAG pipeline
+* A clean Streamlit demo UI
+* Notebook workflows for reproducibility
+* A lightweight modular architecture for future expansion
 
----
-
-## System Overview
-
-The project is organized into four main components, aligned with the intended team structure:
-
-1. **Document Ingestion & Retrieval**
-   PDF extraction, chunking, embedding generation, and vector index construction.
-
-2. **LLM Logic**
-   Prompt design, retrieval-augmented generation (RAG), and a safe generation wrapper compatible with larger models.
-
-3. **System Integration & Demo**
-   Execution notebooks and a command-line pipeline that connect all components.
-
-4. **Evaluation & Report**
-   Baseline vs. RAG comparisons, qualitative outputs, and the foundation for the final project report.
+This project was developed for **COMS 4995 — Applied Machine Learning (Fall 2025)** at Columbia University.
 
 ---
 
-## 1. Document Ingestion & Retrieval
+# **Live System Overview**
 
-Notebook `01_ingestion_retrieval.ipynb` performs:
+MultiDocRAG enables users to:
 
-* PDF text extraction
-* Chunking with configurable size and overlap
-* Embedding generation using `all-MiniLM-L6-v2`
-* Building and saving a FAISS index
+1. **Ingest arbitrary PDFs**
+2. **Embed and index text chunks using FAISS**
+3. **Retrieve relevant context for a user query**
+4. **Generate answers using a local or open-source LLM**
+5. **Compare Baseline vs RAG output in real time**
+6. **Use a Streamlit UI to explore retrieval results & model answers**
 
-Artifacts are stored in:
-
-```
-index_store/
-├── chunks.json
-├── embeddings.npy
-├── faiss.index
-└── meta.json
-```
-
-The retriever logic is implemented in:
-
-```
-src/retriever.py
-```
+The system is fully offline and works with open-source models (e.g., Qwen2.5, Mistral, LLaMA-based checkpoints).
 
 ---
 
-## 2. LLM Logic (Baseline and RAG)
-
-Notebook `02_llm_rag.ipynb` contains:
-
-* Baseline LLM answering (no retrieved context)
-* Retrieval-augmented answering using retrieved chunks
-* Construction of RAG prompts
-* A robust `generate_from_model()` implementation that:
-
-  * automatically respects model context limits
-  * trims long prompts safely
-  * supports temperature and nucleus sampling
-  * works with small and large open-source models
-  * runs fully offline without API keys
-
-This module is compatible with future model upgrades (e.g., LLaMA, Mistral, Gemma, TinyLlama, Phi-3).
-
----
-
-## 3. System Integration & Demo
-
-The project includes two ways to run the pipeline:
-
-### Notebook Workflow
-
-* `01_ingestion_retrieval.ipynb` builds the index.
-* `02_llm_rag.ipynb` performs baseline and RAG comparisons.
-
-### Command-Line Script
-
-The file `rag_pipeline.py` provides a simple interface for running RAG directly:
+# **Architecture**
 
 ```
-python rag_pipeline.py --question "Your question here"
+                  ┌────────────────────┐
+                  │     PDF Upload     │
+                  └─────────┬──────────┘
+                            │
+                   Text Extraction
+                            │
+                            ▼
+                   Chunking + Embeddings
+                            │
+                            ▼
+                ┌──────────────────────┐
+                │   FAISS Vector Index │
+                └───────┬──────────────┘
+                        │ Retrieval (k)
+                        ▼
+             Retrieved Context Chunks
+                        │
+                        ▼
+               RAG Prompt Construction
+                        │
+                        ▼
+             ┌────────────────────────┐
+             │  Local LLM Generation  │
+             └────────────────────────┘
+                        │
+                      Output
 ```
 
-This script:
-
-1. Loads the vector index
-2. Retrieves relevant evidence
-3. Builds a contextual prompt
-4. Produces an answer through the LLM
-
-This is useful for demos, reproducibility, and automated evaluation.
+Modules are cleanly separated so each step can be replaced or improved independently.
 
 ---
 
-## 4. Evaluation
+# **Features**
 
-Notebook 02 provides:
+### **Multi-document ingestion & retrieval**
 
-* Side-by-side comparison of Baseline vs. RAG LLM responses
-* Multi-question evaluation loop
-* Qualitative examination of grounding and relevance
+* PDF parsing
+* Chunking with configurable window size & overlap
+* Embeddings using `sentence-transformers/all-MiniLM-L6-v2`
+* FAISS vector index with metadata fields
 
-The structure supports extension to:
+### **Baseline vs RAG LLM reasoning**
 
-* attribution-based evaluation
-* similarity-based scoring
-* ablation studies (e.g., varying k, model choice, sampling settings)
+* Baseline model answering (no context)
+* RAG enhanced answering (retrieved context injected)
+* Automatic prompt trimming for long inputs
+* Temperature and top-p sampling controls
 
-These elements form the foundation for the final project report and presentation.
+### **Streamlit Demo Interface (New)**
+
+`app.py` provides a polished UI:
+
+* Upload PDFs
+* Build or reload existing FAISS index
+* Ask questions via text box
+* View retrieved text chunks
+* Compare Baseline vs RAG answers
+* Real-time error handling (missing index, empty PDFs, etc.)
+
+### **Modular & Extensible**
+
+* Swap embedding model
+* Swap LLM backbone
+* Add reranking
+* Add citations
+* Add conversational memory
 
 ---
 
-## Repository Structure
+# **Repository Structure**
 
 ```
 MultiDocRAG/
 │
-├── rag_pipeline.py                  # Command-line RAG pipeline
-├── requirements.txt                 # Python dependencies
+├── app.py                          # Streamlit user interface (NEW)
+├── rag_pipeline.py                 # Command-line RAG pipeline
+├── requirements.txt                 
 │
-├── index_store/                     # Vector database
+├── index_store/                    # Generated vector index (created at runtime)
 │   ├── chunks.json
 │   ├── embeddings.npy
 │   ├── faiss.index
@@ -138,28 +120,47 @@ MultiDocRAG/
 │
 ├── src/
 │   ├── __init__.py
-│   └── retriever.py
+│   └── retriever.py                # Retriever class with FAISS logic
 │
 ├── LICENSE
-├── .gitignore
 └── README.md
 ```
 
 ---
 
-## Installation
+# Installation
 
-Install dependencies using:
+Clone the repository:
 
-```
+```bash
+git clone https://github.com/ChengWu-Data/MultiDocRAG.git
+cd MultiDocRAG
 pip install -r requirements.txt
 ```
 
 ---
 
-## How to Run
+# **How to Run the System**
 
-### Build the Index
+## **Option 1: Run the Streamlit Demo (Recommended)**
+
+```bash
+streamlit run app.py
+```
+
+This launches an interactive UI where you can:
+
+1. Upload PDFs
+2. Build the FAISS index
+3. Enter questions
+4. Compare baseline vs RAG responses
+5. View retrieved context
+
+---
+
+## **Option 2: Reproduce with Notebooks**
+
+### **Build the index**
 
 Open:
 
@@ -167,13 +168,14 @@ Open:
 notebooks/01_ingestion_retrieval.ipynb
 ```
 
-and follow the steps to:
+and follow instructions to:
 
-* upload PDFs
+* upload documents
 * extract and chunk text
-* build and save the FAISS index
+* generate embeddings
+* save FAISS index to `index_store/`
 
-### Run RAG Answering
+### **Test Baseline vs RAG answering**
 
 Open:
 
@@ -181,30 +183,53 @@ Open:
 notebooks/02_llm_rag.ipynb
 ```
 
-to compare Baseline vs. RAG responses interactively.
+---
 
-### Command-Line Usage
+## **Option 3: Command-Line Usage**
 
+```bash
+python rag_pipeline.py --question "What is the main idea of the paper?"
 ```
-python rag_pipeline.py --question "What are the main sources of interest rate risk?"
-```
+
+This:
+
+1. Loads FAISS index
+2. Retrieves k chunks
+3. Builds a RAG prompt
+4. Produces a grounded answer
 
 ---
 
-## Future Extensions
+# **Evaluation**
 
-The project can be extended with:
+The system supports:
 
-* larger or domain-specific embedding models
-* long-context or fine-tuned LLMs
-* multi-turn conversational memory
-* citation attribution
-* a Streamlit or web-based interface
-* quantitative evaluation metrics
+* Baseline vs RAG qualitative comparison
+* Retrieval quality inspection
+* Multi-question loops
+* Chunk relevance visualization
+
+Planned extensions:
+
+* automatic attribution
+* Rouge/BLEU evaluation
+* embedding ablations (`k`, model choice)
+* reranking
 
 ---
 
-## License
+# **Future Extensions**
+
+* Introduce document-level memory
+* Add citation markers in generated answers
+* Support images or tables (multi-modal RAG)
+* Provide a REST API / Docker deployment
+* Integrate larger embeddings (e.g., E5-large)
+* Use LLM-as-a-judge for automated evaluation
+
+---
+
+# License
 
 MIT License.
 
