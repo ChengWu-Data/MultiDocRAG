@@ -2,13 +2,14 @@
 
 import sys
 from pathlib import Path
+
+# Add project root to sys.path so that `src` and `evaluation` can be imported
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import csv
-from pathlib import Path
 from typing import List, Dict, Any
 
-from evaluation.load_documents import build_eval_index
+from evaluation.load_documents import build_eval_retriever
 from evaluation.eval_pipeline import eval_rag_answer
 from evaluation.qa_loader import load_qa
 
@@ -23,28 +24,23 @@ OUT_CSV = RESULTS_DIR / "eval_outputs.csv"
 def run_evaluation() -> None:
     """
     Fully automated evaluation pipeline:
-    - Load PDFs from evaluation/pdfs/
-    - Build an isolated FAISS index for eval only
-    - Load QA dataset
-    - Run RAG answering
-    - Save results to CSV
+    - Build an in-memory retriever from evaluation/pdfs/
+    - Load QA dataset from evaluation/qa_set.json
+    - Run RAG answering for answerable & unanswerable questions
+    - Save results to evaluation/results/eval_outputs.csv
     """
 
     if not PDF_DIR.exists():
         raise FileNotFoundError(f"Missing directory: {PDF_DIR}")
 
-    # Build evaluation-only index
-    index, chunks = build_eval_index(str(PDF_DIR))
+    retriever = build_eval_retriever(str(PDF_DIR))
 
-    # Load questions
     qa = load_qa(QA_PATH)
     answerable: List[Dict[str, Any]] = qa.get("answerable", [])
     unanswerable: List[Dict[str, Any]] = qa.get("unanswerable", [])
 
-    # Prepare output dir
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # CSV structure
     fieldnames = [
         "id",
         "group",
@@ -58,7 +54,7 @@ def run_evaluation() -> None:
 
     rows: List[Dict[str, Any]] = []
 
-    # Answerable (mode = RAG)
+    # Answerable questions (mode = RAG)
     for item in answerable:
         qid = item.get("id", "")
         question = item["question"]
@@ -66,7 +62,9 @@ def run_evaluation() -> None:
         group = item.get("group", "answerable")
 
         ans, retrieved_texts = eval_rag_answer(
-            question=question, index=index, chunks=chunks, k=6
+            question=question,
+            retriever=retriever,
+            k=6,
         )
 
         rows.append(
@@ -82,14 +80,16 @@ def run_evaluation() -> None:
             }
         )
 
-    # Unanswerable evaluation
+    # Unanswerable questions
     for item in unanswerable:
         qid = item.get("id", "")
         question = item["question"]
         group = item.get("group", "unanswerable")
 
         ans, retrieved_texts = eval_rag_answer(
-            question=question, index=index, chunks=chunks, k=6
+            question=question,
+            retriever=retriever,
+            k=6,
         )
 
         rows.append(
@@ -105,7 +105,6 @@ def run_evaluation() -> None:
             }
         )
 
-    # Save CSV
     with OUT_CSV.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -116,3 +115,4 @@ def run_evaluation() -> None:
 
 if __name__ == "__main__":
     run_evaluation()
+
