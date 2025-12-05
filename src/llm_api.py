@@ -10,7 +10,7 @@ if not api_key:
 
 client = Groq(api_key=api_key)
 
-DEFAULT_MODEL = "mixtral-8x7b-32768"  
+DEFAULT_MODEL = "llama-3.1-8b-instant"  
 
 
 def generate_llm_response(
