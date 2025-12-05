@@ -1,8 +1,8 @@
-torch>=2.0.0
-transformers>=4.37.0
-sentence-transformers>=2.2.2
+streamlit>=1.30.0
 faiss-cpu>=1.7.4
+sentence-transformers>=2.2.2
 pypdf>=4.0.0
 numpy>=1.23.0
 tqdm>=4.65.0
-streamlit>=1.30.0
+
+groq
